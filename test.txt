@@ -1,0 +1,5 @@
+docker exec -i -t postgres-db bash
+
+psql -U admin -d myrsv
+
+

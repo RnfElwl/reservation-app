@@ -5,10 +5,12 @@ import Join from './pages/join';
 import Login from './pages/login';
 import Home from './pages/home';
 import List from './pages/list';
+import Detail from './pages/detail';
+import { Route, BrowserRouter, Routes  } from 'react-router-dom';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Header></Header>
       <Routes>
         <Route path="/" element={<Home/>}></Route>
@@ -17,7 +19,7 @@ function App() {
         <Route path="/list" element={<List/>}></Route>
         <Route path="/detail" element={<Detail/>}></Route>
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 

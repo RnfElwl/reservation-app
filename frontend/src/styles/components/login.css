@@ -1,0 +1,9 @@
+.login_input{
+    display: flex;
+
+}
+.login_input > input{
+    padding: 5px 10px;
+    margin: 0px 10px;
+}
+

@@ -35,6 +35,11 @@ public class SecurityConfig {
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, error) ->
+                                response.setStatus(401)
+                        )
+                )
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
@@ -42,10 +47,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/login",
-                                "/join",
-                                "/reissue",
-                                "/"
+                                "/auth/login", "/auth/logout", "/auth/reissue", "/", "/auth"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

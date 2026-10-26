@@ -1,0 +1,19 @@
+.header_nav{
+    display: flex;
+
+}
+.header_nav >ul:first-child{
+    display: flex;
+    margin-right: auto;
+    align-items: center;
+    padding: 10px 20px;
+}
+.header_nav>ul:last-child{
+    display: flex;
+    margin-left: auto;
+}
+
+.header_nav>ul:last-child>li{
+    display: flex;
+    margin: 0 5px;
+}

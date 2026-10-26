@@ -32,7 +32,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.substring(7);
 
-            if (jwtTokenProvider.validateToken(token)) {
+            if (jwtTokenProvider.validateToken(token)
+                    && "access".equals(jwtTokenProvider.getTokenType(token))) {
                 UUID userId = jwtTokenProvider.getUserId(token);
 
                 UsernamePasswordAuthenticationToken authentication =

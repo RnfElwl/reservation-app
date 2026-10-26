@@ -5,19 +5,18 @@ import com.bsy.rsv.reservation.dto.request.LoginRequest;
 import com.bsy.rsv.reservation.dto.response.LoginResponse;
 import com.bsy.rsv.reservation.dto.response.LoginResult;
 import com.bsy.rsv.reservation.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/auth")
 public class loginController {
 
     private final UserService userService;
@@ -44,12 +43,30 @@ public class loginController {
     }
     @PostMapping("/reissue")
     public ResponseEntity<LoginResponse> reissue(
-            @CookieValue("refreshToken") String refreshToken
+            @CookieValue(value = "refreshToken", required = false) String refreshToken
     ) {
-        // 유효성 검사
-        // DB 저장 여부 확인
-        // 새 Access Token 생성
-        // 응답
-        return ResponseEntity.ok(new LoginResponse("test"));
+
+        String accessToken = userService.reissueAccessToken(refreshToken);
+
+        return ResponseEntity.ok(new LoginResponse(accessToken));
+    }
+
+    @DeleteMapping("/logout")
+    public ResponseEntity<Boolean> logout(
+            @CookieValue("refreshToken") String refreshToken
+            , HttpServletResponse response
+            ){
+        System.out.println("------------------------------------");
+        Boolean logoutCheck = userService.logoutToken(refreshToken);
+        System.out.println("111111111111111111111111111");
+        ResponseCookie cookie = ResponseCookie
+                .from("refreshToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(logoutCheck);
     }
 }

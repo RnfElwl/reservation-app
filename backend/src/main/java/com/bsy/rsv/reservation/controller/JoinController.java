@@ -21,7 +21,7 @@ public class JoinController {
 
     @Autowired
     private final UserService userService;
-    @PostMapping("/join")
+    @PostMapping("/auth/join")
     public ResponseEntity<Boolean> join(@RequestBody JoinRequest request){
 
 

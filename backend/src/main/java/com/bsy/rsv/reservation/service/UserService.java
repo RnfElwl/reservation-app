@@ -12,10 +12,13 @@ import com.bsy.rsv.reservation.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -65,5 +68,73 @@ public class UserService {
 
 
         return new LoginResult( accessToken, refreshToken);
+    }
+    public String reissueAccessToken(String refreshToken){
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh Token 쿠키가 없습니다."
+            );
+        }
+
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "유효하지 않거나 만료된 Refresh Token입니다."
+            );
+        }
+
+        if (!"refresh".equals(
+                jwtTokenProvider.getTokenType(refreshToken)
+        )) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh Token이 아닙니다."
+            );
+        }
+
+        RefreshToken savedToken = tokenRepository
+                .findByToken(refreshToken)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "등록되지 않은 Refresh Token입니다."
+                        )
+                );
+
+        return jwtTokenProvider.createAccessToken(
+                savedToken.getUserId()
+        );
+    }
+    public Boolean logoutToken(String refreshToken){
+        System.out.println(refreshToken);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh Token 쿠키가 없습니다."
+            );
+        }
+
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "유효하지 않거나 만료된 Refresh Token입니다."
+            );
+        }
+
+        if (!"refresh".equals(
+                jwtTokenProvider.getTokenType(refreshToken)
+        )) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh Token이 아닙니다."
+            );
+        }
+        System.out.println("delete token");
+
+        tokenRepository
+                .deleteByToken(refreshToken);
+
+        return true;
     }
 }

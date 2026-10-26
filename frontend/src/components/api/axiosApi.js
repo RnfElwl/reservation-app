@@ -1,65 +1,67 @@
 import axios from "axios";
+import { useSyncExternalStore } from "react";
+
 let accessToken = null;
-
-const getAccessToken = () =>accessToken;
-
-const setAccessToken = (token) =>{
+let authVersion = 0;
+let refreshPromise = null;
+const listeners = new Set();
+const getAccessToken = () => accessToken;
+const setAccessToken = (token) => {
+    authVersion += 1;
     accessToken = token;
-}
+    listeners.forEach((listener) => listener());
+};
+const clearAccessToken = () => setAccessToken(null);
+const subscribe = (listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+};
+const useAccessToken = () => useSyncExternalStore(subscribe, getAccessToken, () => null);
+const config = { baseURL: "http://localhost:9988/auth", withCredentials: true };
+const api = axios.create(config);
+// 재발급 실패가 다시 재발급을 호출하지 않도록 분리합니다.
+const refreshApi = axios.create(config);
 
-const clearAccessToken = () =>{
-    accessToken = null;
-}
+const reissueAccessToken = () => {
+    if (!refreshPromise) {
+        const version = authVersion;
+        refreshPromise = refreshApi.post("/reissue")
+            .then(({ data }) => {
+                if (version !== authVersion) throw new Error("인증 상태가 변경되었습니다.");
+                if (!data.accessToken) throw new Error("accessToken이 없습니다.");
+                setAccessToken(data.accessToken);
+                return data.accessToken;
+            })
+            .catch((error) => {
+                if (version === authVersion && error.response?.status === 401) clearAccessToken();
+                throw error;
+            })
+            .finally(() => { refreshPromise = null; });
+    }
+    return refreshPromise;
+};
 
-const api = axios.create({
-    baseURL: "http://localhost:9988",
-    withCredentials:true
+api.interceptors.request.use((request) => {
+    if (accessToken) request.headers.Authorization = `Bearer ${accessToken}`;
+    else delete request.headers.Authorization;
+    request._authVersion = authVersion;
+    return request;
 });
-
-api.interceptors.request.use((config)=>{
-    const accessToken = getAccessToken();
-
-    if(accessToken){
-    config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    return config;  
-    },
-    (error)=>{
-        return Promise.reject(error);
-    }
-)
-
 api.interceptors.response.use(
-    (response)=> response,
-
-    async(error)=>{
-        const originalRequest = error.config;
-
-        if(
-            error.response?.status === 401 &&
-            !originalRequest._retry&&
-            !originalRequest.url.includes("/reissue")
-        ){
-            originalRequest._retry = true;
-
-            try{
-                const response = await api.post("/reissue");
-                const newAccessToken = response.data.accessToken;
-                setAccessToken(newAccessToken);
-
-                originalRequest.headers.Authorization = 
-                `Bearer ${newAccessToken}`;
-
-                return api(originalRequest);
-            }catch(refreshError){
-                clearAccessToken();
-                window.location.href = "/login";
-                return Promise.reject(refreshError);
-            }
+    (response) => response,
+    async (error) => {
+        const request = error.config;
+        const isAuthRequest = ["/login", "/logout", "/reissue"].includes(request?.url);
+        if (!request || error.response?.status !== 401 || request._retry || isAuthRequest) {
+            return Promise.reject(error);
         }
-        return Promise.reject(error);
+        request._retry = true;
+        if (request._authVersion !== authVersion) {
+            if (!accessToken) return Promise.reject(error);
+            return api(request);
+        }
+        await reissueAccessToken();
+        return api(request);
     }
-    
-)
-
-export {api, setAccessToken, getAccessToken, clearAccessToken};
+);
+export { api, getAccessToken, setAccessToken, clearAccessToken, useAccessToken, reissueAccessToken };
